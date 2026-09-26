@@ -1,0 +1,43 @@
+DirectoryIndex index.php
+Options -Indexes
+
+<Files "error_log">
+    Require all denied
+</Files>
+<FilesMatch "\.log$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # /index or /index.php -> site root
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{THE_REQUEST} \s/+index(\.php)?[\s?] [NC]
+    RewriteRule ^index(\.php)?$ / [R=301,L]
+
+    # Direct .php requests -> clean URL (skip AJAX endpoints in /include/ and the admin panel)
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteCond %{REQUEST_URI} !^/include/
+    RewriteCond %{REQUEST_URI} !^/admin/
+    RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
+    RewriteRule ^ /%1 [R=301,L]
+
+    # /services/ (trailing slash, no slug) -> canonical /services listing page.
+    # Without this, the rule below never matches an empty slug and Apache 404s.
+    RewriteCond %{REQUEST_METHOD} GET
+    RewriteRule ^services/$ /services [R=301,L]
+
+    # Public /services/<page> URLs are served from the services-pages/ folder on disk.
+    # The folder is deliberately NOT named "services" - that collided with services.php
+    # and Apache's directory-slash handling redirected /services straight to a 403
+    # before this .htaccess ever got a say.
+    RewriteRule ^services/([^/]+)/?$ services-pages/$1.php [L]
+
+    # Serve the matching .php file for a clean URL, without changing the address bar
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME}\.php -f
+    RewriteRule ^(.*)$ $1.php [L]
+</IfModule>
