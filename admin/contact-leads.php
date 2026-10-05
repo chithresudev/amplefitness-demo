@@ -1,15 +1,20 @@
 <?php
 require_once __DIR__ . '/includes/data-store.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/db.php';
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
 $currentUrl = $protocol . "://" . $_SERVER['HTTP_HOST'];
 require_admin_login($currentUrl);
 
-$leads = read_json('contact-leads.json', []);
-usort($leads, function ($a, $b) {
-    return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
-});
+$leads = [];
+$dbError = null;
+try {
+    $leads = get_contact_leads();
+} catch (Throwable $e) {
+    error_log('contact_leads read failed: ' . $e->getMessage());
+    $dbError = 'Could not load enquiries from the database. Check admin/includes/db-config.php.';
+}
 
 $pageTitle = 'Contact Enquiries';
 $adminActive = 'contact-leads';
@@ -19,6 +24,10 @@ include __DIR__ . '/includes/layout-header.php';
 <div class="admin-topbar">
     <h1>Contact Enquiries</h1>
 </div>
+
+<?php if ($dbError): ?>
+    <div class="admin-card" style="color:#e74c3c;"><?php echo htmlspecialchars($dbError) ?></div>
+<?php endif; ?>
 
 <div class="admin-card">
     <div class="admin-table-wrap">

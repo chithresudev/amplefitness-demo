@@ -1,21 +1,24 @@
 <?php
 require_once __DIR__ . '/../admin/includes/data-store.php';
+require_once __DIR__ . '/../admin/includes/db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name  = htmlspecialchars(trim($_POST["voucher_name"] ?? ""));
-    $phone = trim($_POST["voucher_phone"] ?? "");
+    $rawName = trim($_POST["voucher_name"] ?? "");
+    $phone   = trim($_POST["voucher_phone"] ?? "");
 
-    if ($name === "" || !preg_match('/^[6-9][0-9]{9}$/', $phone)) {
+    if ($rawName === "" || !preg_match('/^[6-9][0-9]{9}$/', $phone)) {
         echo "error";
         exit;
     }
 
-    append_json('voucher-leads.json', [
-        'id' => time() . '-' . bin2hex(random_bytes(4)),
-        'name' => $name,
-        'phone' => $phone,
-        'created_at' => date('Y-m-d H:i:s'),
-    ]);
+    // If the DB is down, still send the notification email so the lead isn't lost.
+    try {
+        save_voucher_lead($rawName, $phone);
+    } catch (Throwable $e) {
+        error_log('voucher_leads insert failed: ' . $e->getMessage());
+    }
+
+    $name = htmlspecialchars($rawName);
 
     $settings = get_settings();
     $to      = $settings['notify_email'];

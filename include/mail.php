@@ -1,23 +1,31 @@
 <?php
 require_once __DIR__ . '/../admin/includes/data-store.php';
+require_once __DIR__ . '/../admin/includes/db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Sanitize input
-    $fname   = htmlspecialchars(trim($_POST["fname"]));
-    $lname   = htmlspecialchars(trim($_POST["lname"]));
-    $email   = filter_var(trim($_POST["email"]), FILTER_SANITIZE_EMAIL);
-    $phone   = htmlspecialchars(trim($_POST["phone"]));
-    $message = htmlspecialchars(trim($_POST["message"]));
+    $rawFname   = trim($_POST["fname"] ?? "");
+    $rawLname   = trim($_POST["lname"] ?? "");
+    $email      = filter_var(trim($_POST["email"] ?? ""), FILTER_SANITIZE_EMAIL);
+    $rawPhone   = trim($_POST["phone"] ?? "");
+    $rawMessage = trim($_POST["message"] ?? "");
 
-    append_json('contact-leads.json', [
-        'id' => time() . '-' . bin2hex(random_bytes(4)),
-        'fname' => $fname,
-        'lname' => $lname,
-        'email' => $email,
-        'phone' => $phone,
-        'message' => $message,
-        'created_at' => date('Y-m-d H:i:s'),
-    ]);
+    if ($rawFname === "" || !filter_var($email, FILTER_VALIDATE_EMAIL) || $rawPhone === "") {
+        echo "error";
+        exit;
+    }
+
+    // Store raw values (prepared statement); escape only for the HTML emails below.
+    // If the DB is down, still send the notification email so the lead isn't lost.
+    try {
+        save_contact_lead($rawFname, $rawLname, $email, $rawPhone, $rawMessage);
+    } catch (Throwable $e) {
+        error_log('contact_leads insert failed: ' . $e->getMessage());
+    }
+
+    $fname   = htmlspecialchars($rawFname);
+    $lname   = htmlspecialchars($rawLname);
+    $phone   = htmlspecialchars($rawPhone);
+    $message = htmlspecialchars($rawMessage);
 
     $settings = get_settings();
     $fromEmail = $settings['from_email'];

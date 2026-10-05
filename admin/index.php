@@ -1,14 +1,21 @@
 <?php
 require_once __DIR__ . '/includes/data-store.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/db.php';
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
 $currentUrl = $protocol . "://" . $_SERVER['HTTP_HOST'];
 require_admin_login($currentUrl);
 
 $gallery = read_json('gallery.json', []);
-$contactLeads = read_json('contact-leads.json', []);
-$voucherLeads = read_json('voucher-leads.json', []);
+$contactCount = '-';
+$voucherCount = '-';
+try {
+    $contactCount = count_leads('contact_leads');
+    $voucherCount = count_leads('voucher_leads');
+} catch (Throwable $e) {
+    error_log('lead count failed: ' . $e->getMessage());
+}
 $settings = get_settings();
 
 $pageTitle = 'Dashboard';
@@ -27,11 +34,11 @@ include __DIR__ . '/includes/layout-header.php';
         <div class="stat-label">Gallery Images</div>
     </div>
     <div class="admin-stat">
-        <div class="stat-value"><?php echo count($contactLeads) ?></div>
+        <div class="stat-value"><?php echo $contactCount ?></div>
         <div class="stat-label">Contact Enquiries</div>
     </div>
     <div class="admin-stat">
-        <div class="stat-value"><?php echo count($voucherLeads) ?></div>
+        <div class="stat-value"><?php echo $voucherCount ?></div>
         <div class="stat-label">Voucher Signups</div>
     </div>
 </div>
